@@ -1,0 +1,6 @@
+interface:
+  display_name: "竖屏口播剪辑"
+  short_description: "把已拍好的口播素材剪成 9:16 抖音风成片或剪映草稿"
+  default_prompt: "用 $vertical-talking-head-edit 把这个文件夹里的口播素材剪成竖屏短视频"
+policy:
+  allow_implicit_invocation: true
