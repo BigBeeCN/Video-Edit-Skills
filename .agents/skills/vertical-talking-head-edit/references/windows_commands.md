@@ -394,4 +394,4 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 - **编码**：Linux 默认 UTF-8；Windows 默认可能是 GBK，所有文件读写都要写 `encoding='utf-8'`。
 - **GPU**：我们全程在 CPU 上跑（int8 whisper、CPU 对齐、CPU 抠像）；Windows 有 N 卡可以开 CUDA，但需要匹配的 torch 和 cuDNN，没有验证过。
 - **路径**：Linux 路径和 `D:\...`；脚本里写死的 `/tmp`、`/usr/share/fonts`、`...` 都要改成可配置的。
-- **剪映**：我们的流水线不经过剪映，`caption_presets.json` 里的 `jianying` 字段标的是“unverified”。剪映能不能导入 ProRes 4444 透明通道、SRT 字幕能不能对齐，都需要在 Windows 上实测。
+- **剪映**：草稿怎么建、哪些能改、alpha 短片怎么放，见 `jianying_route.md`。整步待验证。质检打在剪辑师导出的 mp4 上，不必读草稿。`caption_presets.json` 里的 `jianying` 字段仍是未实测。

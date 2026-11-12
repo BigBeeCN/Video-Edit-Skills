@@ -14,7 +14,10 @@
    2.0
   ],
   "fx_interval_note": "约2秒一个，1.5秒为上限",
-  "sfx_per_sec": 0.5,
+  "sfx_per_sec": 0.4,
+  "sfx_per_sec_note": "工作值。待确认：剪辑师原话约 0.5 个/秒、均匀铺开。确认前按 0.4，不要改回 0.5。",
+  "sfx_per_4s_note": "旧字段 sfx_per_4s 是每 4 秒 1–3 个（含下限 1）。新规则只写任意 4 秒最多 3 个。下限待确认，确认前不要为了凑满 1 个去加音效。",
+  "fx_types_note": "待确认：另有规则要求种类 18–22、每种最多 3 次，和 fx_interval_s、max_gap_s 在 30–50 秒片上个数对不齐。不要改间隔去凑种类数。见 pacing.md。",
   "sfx_distribution": "均匀，不在结尾扎堆",
   "sync_max_frames": 2
  },

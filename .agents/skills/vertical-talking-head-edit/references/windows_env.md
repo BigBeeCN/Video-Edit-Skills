@@ -56,7 +56,7 @@
 | 可写目录 | 草稿目录加进 `writable_roots` 后，在沙箱里往该目录写一个文件 | 不弹批准且写入成功 |
 | 沙箱内 GPU | 沙箱里跑 `ffmpeg -version`、`python -c "import torch; print(torch.cuda.is_available())"`，再转一段 5 秒片子 | 三项都正常 |
 | 安装 | 两个环境各自 import；CUDA 版跑完 10 秒素材 | 不报缺 DLL，模型缓存目录可写 |
-| 剪映加密与文件名 | 剪映新建一个草稿，看文件夹里 `draft_content.json` / `draft_info.json` 哪个存在、是否明文；再用脚本生成一个草稿看能否在列表里出现并打开，打不开就复制改名为 `draft_info.json` 再试 | 明文才能走路线 A；把实际文件名写回 skill |
+| 剪映草稿 | 在剪辑师的 Windows 剪映上打开脚本新建的草稿。核对主文件是 `draft_content.json` 还是 `draft_info.json`；每条特效的 alpha 短片是否真透明；素材路径是不是这台机器上的 Windows 路径。加密只影响读取，生成不需要解密 | 草稿能打开。口播分段、空镜分轨、字幕、分轨音频都能改。alpha 不对就改走 PNG 序列，或合成进画面。结果写回 `jianying_route.md`。通过前这一步保持「待验证」 |
 | 起音前 ≤67 ms | 平台无关：剪点量到首字起音（能量首次超过 max(p10+14 dB, −48 dBFS) 的 10 ms 窗口） | 全部 ≤67 ms 且试听不吞字头，才改为默认；否则保持 ≤90 ms |
 
 固定语法，直接当规则用：cmd 的 `.bat` 里 `%05d` 写成 `%%05d`；ffmpeg 滤镜里的盘符冒号写成 `C\:/`；多进程脚本入口加 `if __name__ == "__main__":`。

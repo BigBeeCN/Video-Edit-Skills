@@ -2,7 +2,7 @@
 
 本仓库提供竖屏口播剪辑 skill `vertical-talking-head-edit`。在 Windows 上使用 OpenAI Codex（CLI、IDE 扩展或桌面版）时，克隆本仓库或按下面的方式安装后，Codex 会发现这个 skill：用户要求把已经拍好的口播视频剪成竖屏短视频时，按 `description` 隐式调用它。
 
-Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效，最后交付剪映草稿或叠加层成片。不涉及拍摄环节。
+Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效。交付成片，并附重要程度表和时长统计表。剪映工程给剪辑师自己改特效、空镜时长和变速，这一步待验证；验证前保底是成片 + SRT + 分镜表。不涉及拍摄环节。
 
 ## 仓库布局
 
@@ -11,7 +11,7 @@ Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把�
 ├── .agents/skills/vertical-talking-head-edit/
 │   ├── SKILL.md                 # name、description 与剪辑流程
 │   ├── agents/openai.yaml       # 显示名、短说明、默认提示、允许隐式调用
-│   └── references/              # 环境、命令、分镜、质检、硬规则
+│   └── references/              # 环境、命令、分镜、节奏、质检、剪映、硬规则
 ├── install.ps1                  # 安装到用户目录（USER 范围）
 ├── templates/AGENTS.md          # 贴进视频项目 AGENTS.md 的片段
 ├── .gitattributes
