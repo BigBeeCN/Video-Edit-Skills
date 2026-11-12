@@ -24,7 +24,7 @@ number 数字 · contrast 反差 · punchline 金句 · emotion 情绪 · term �
 
 `fx.type` 参考：kw_pop（关键词大字）、number（数字滚动）、obj（实物贴图 + 拟音）、list_item / list_gather（累加清单）、stamp（红章）、q_flash（问号 + 闪白）、vcol（竖排双列）、jumpcut_punch（跳切推拉）、matte_behind（字在人后，爆点）、glyph_mask（文字遮罩转场，爆点）、freeze（定格，爆点）。
 
-自动检查分两处：`check_rules` 在时间线上查效果最大间隔 ≤3 秒、音效间隔 ≥0.25 秒，结果写进 `rules`。音效密度的工作值是全片 ≤0.4 个/秒、任意 4 秒 ≤3 个（「待确认」：旧标准约 0.5 个/秒、每 4 秒 1–3 个，见 `pacing.md`）。效果间隔和种类 18–22 也在 `pacing.md` 标了「待确认」，不要为了通过检查改其中一边。口播占比、单段纯口播、穿插时长按 `pacing.md` 算，写进 `timing_stats.csv`；标了「待确认」的不算通过。安全区、压脸、压 logo、同屏 ≤3 层由页面里的 `checkSafe()` 逐帧查，结果写进 `<name>_safe_violations.json`（要求为 `[]`）。
+自动检查分两处：`check_rules` 在时间线上查效果最大间隔 ≤3 秒、音效间隔 ≥0.25 秒，结果写进 `rules`。音效密度的工作值是全片 ≤0.4 个/秒、任意 4 秒 ≤3 个（「待确认」：0.4 不是用户原话；剪辑师说过的标准约 0.5 个/秒、每 4 秒 1–3 个，见 `pacing.md`）。效果间隔和种类 18–22 也在 `pacing.md` 标了「待确认」，不要为了通过检查改其中一边。口播占比、单段纯口播、穿插时长按 `pacing.md` 算，写进 `timing_stats.csv`；标了「待确认」的不算通过。安全区、压脸、压 logo、同屏 ≤3 层由页面里的 `checkSafe()` 逐帧查，结果写进 `<name>_safe_violations.json`（要求为 `[]`）。
 
 ## 重要程度分析表（`importance.csv`）
 

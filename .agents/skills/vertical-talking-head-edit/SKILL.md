@@ -18,10 +18,10 @@ description: 剪竖屏口播短视频时使用（Windows + Codex）：用户给�
 - `spec.json`（分镜，唯一剪辑依据）、成片 mp4、`.srt`、逐秒 QC 拼图、QC 报告。
 - `importance.csv`：每个穿插镜头和每个字幕特效的重要程度。列见 `references/spec_schema.md`。
 - `timing_stats.csv`：每段穿插画面和每个特效动画的时长，以及最短值、平均值。列见 `references/spec_schema.md`。
-- 剪映草稿（待验证）：剪辑师用来自己改特效、空镜时长和变速的工程。做法见 `references/jianying_route.md`。实测前保底交付成片 + SRT + 分镜表，外加上面两张表。
+- 剪映草稿：剪辑师用来自己改特效、空镜时长和变速的工程。做法和哪些已经在剪映 11.7 里打开确认过，见 `references/jianying_route.md`。剪映里点导出还没测，保底交付成片 + SRT + 分镜表，外加上面两张表。
 
 ## 第 0 步：环境自检（不过不开工）
-按 `references/windows_env.md` 跑自检：ffmpeg 完整版（带 zscale、tonemap、prores_ks）、Python 3.10/3.11、faster-whisper + whisperX、Playwright + Chromium + 目标中文字体，可选 demucs / RVM；剪映草稿目录已填进配置并加入 `writable_roots`。Codex 沙箱默认断网，模型和依赖要提前装好。任何一项失败，先报告缺什么，不要硬跑。各步骤的具体命令见 `references/windows_commands.md`。
+按 `references/windows_env.md` 跑自检：先找 PATH 里的 ffmpeg 和 Python。剪映自带的 ffmpeg 没有 zscale 和 libx264，不能算通过；用完整版（gyan.dev full build，或项目 `tools` 目录里的便携版）和 Python 3.10/3.11。还要有 faster-whisper + whisperX、Playwright + Chromium + 目标中文字体，可选 demucs / RVM。剪映草稿目录写入 `writable_roots` 后重启；没配的时候，沙箱写工作区外会直接拒绝，不弹批准。工作区如果是只读沙箱，写文件要 `require_escalated`。Codex 沙箱默认断网，模型和依赖要提前装好。任何一项失败，先报告缺什么，不要硬跑。各步骤的具体命令见 `references/windows_commands.md`。
 
 ## 第 1 步：素材盘点
 1. ffprobe 每个文件：分辨率、帧率（是否可变）、旋转、时长、色彩传输（HLG/PQ = HDR）。写成 `inventory.csv`。
@@ -53,7 +53,7 @@ description: 剪竖屏口播短视频时使用（Windows + Codex）：用户给�
 ## 第 5 步：剪辑
 1. 入出点用 10 ms 帧 RMS 能量检测（不用 Whisper 字尾）。气口剪干净：吸气声、废话一点不留。
    - 实际跑通的做法：先按能量裁，阈值 max(第 10 百分位 + 14 dB, −48 dBFS)，连续 3 个 10 ms 窗口有声才算开口，前留 0.10 s、后留 0.14 s，再人工收紧；检查剪点两侧低于 −42 dBFS 的连续长度合计 ≤90 ms。
-   - 剪辑师习惯的目标：每个字起音前只留 1–2 帧（≤67 ms），尚未按此标准实测（待验证）。验证方法：demucs 分离人声后，从剪点量到连续 3 个 10 ms 窗口高于 −42 dBFS 的起点；每个剪点 ≤67 ms、首字辅音不被切掉、剪段重跑 ASR 无断字才算通过，通过后再改成默认。
+   - 剪辑师习惯的目标：每个字起音前只留 1–2 帧（≤67 ms）。能量口径已在 Windows 上通过：按草稿的 `source_timerange.start` 量（不要用 `target_timerange`），29/29 ≤67 ms，最大 40 ms。量的是降噪压缩后的人声，没有 demucs。试听确认没吞字头、剪段重跑 ASR 无断字之前，不改成默认，仍用两侧静音合计 ≤90 ms。
    - 可另出一版句间留 2–3 帧的对比版给剪辑师挑。
 2. 帧精确导出每段：`-ss` 放在 `-i` 前，`-vf` 含 `fps=30`，用 `-frames:v nf` 定长（nf = round((出点 − 入点) × 30)），`libx264 -preset veryfast -crf 12`，带 BT.709 三个色彩标记；音频按采样点拼接，每段 8 ms 淡入 / 15 ms 淡出防爆音。
 3. 同机位跳切加 1.08 倍推拉；进出 B-roll 用甩镜 + 横向模糊。甩镜一类转场的时长见 `references/pacing.md`。1.08 倍是缩放，不是播放速度。
@@ -84,23 +84,23 @@ description: 剪竖屏口播短视频时使用（Windows + Codex）：用户给�
 ## 第 7 步：声音
 - 人声：高通 80 Hz → 降噪 → 轻 EQ → 压缩。
 - 音乐：按章节换曲（剪辑师习惯），交叉淡化 300–600 ms；说话时侧链闪避。只用确认授权或自行合成的音乐。
-- 音效：工作值全片 ≤0.4 个/秒，任意 4 秒内最多 3 个；任意两个间隔 ≥0.25 秒、不叠响。电平默认音效 RMS 比人声有声段低 14 dB（`db=-14`）；内容匹配的拟音优先于通用 pop。「待确认」剪辑师本人说过的标准是约 0.5 个/秒、均匀铺开，每 4 秒窗口 1–3 个（含下限 1 个）。确认前按 0.4，不要为了凑 0.5 或凑满窗口下限去加音效。算术在 `references/pacing.md`。
-- 响度：第一遍 `loudnorm=I=-14:TP=-1.5:LRA=11` 测量；第二遍代入测量值加 `linear=true`，后面固定接 `aresample=48000,alimiter=limit=0.7:attack=1:release=30:level=false`；最后 ebur128 复测，按 g = min(−14 − I, −2.9 − Peak) 补增益。目标 −14 LUFS，真峰值 ≤ −1 dBTP。
+- 音效：工作值全片 ≤0.4 个/秒，任意 4 秒内最多 3 个；任意两个间隔 ≥0.25 秒、不叠响。电平默认音效 RMS 比人声有声段低 14 dB（`db=-14`）；内容匹配的拟音优先于通用 pop。「待确认」0.4 不是用户的原话，是剪辑机器人在用户说音效太挤之后自己收的上限。剪辑师说过的标准是约 0.5 个/秒、均匀铺开，每 4 秒窗口 1–3 个（含下限 1 个）。确认前按 0.4，不要为了凑 0.5 或凑满窗口下限去加音效。算术在 `references/pacing.md`。
+- 响度：第一遍 `loudnorm=I=-14:TP=-1.5:LRA=11` 测量；第二遍代入测量值加 `linear=true`，后面固定接 `aresample=48000,alimiter=limit=0.7:attack=1:release=30:level=false`；最后 ebur128 复测，按 g = min(−14 − I, −2.9 − Peak) 补增益。短样例（例如 5 秒）走完两遍仍可能只有 −15.3 LUFS，不能拿来判断整片。目标 −14 LUFS，真峰值 ≤ −1 dBTP。整片 ffmpeg 成片复测过 −14.0 LUFS、−3.4 dBTP。剪映没有总线限幅，导出的 mp4 要再测真峰值，见 `references/jianying_route.md`。
 
 ## 第 8 步：渲染与交付
-目标是一份剪辑师自己能改的剪映工程（特效、空镜时长、变速）。轨道怎么拆、哪些写不进剪映原生、要测的三件事，见 `references/jianying_route.md`。**这一步待验证**，要在剪辑师的 Windows 剪映上实测一次。实测前保底交付：成片 + SRT + 分镜表。
+目标是一份剪辑师自己能改的剪映工程（特效、空镜时长、变速）。轨道怎么拆、哪些已经在剪映 11.7 里打开确认过，见 `references/jianying_route.md`。剪映里点导出还没测。导出没跑通之前，保底交付：成片 + SRT + 分镜表。
 
-用 pyJianYingDraft 新建草稿（它不能读已有草稿；草稿加密影响读取，不影响生成）：口播主轨切成段；每条空镜单独一条轨道；字幕用剪映文本，关键词上色；BGM、每条音效、人声分开音轨。
+用 pyJianYingDraft 新建草稿（它不能读已有草稿；剪映自己的草稿是加密的，外面写的明文草稿复制进去仍是明文。加密影响读取，不影响生成）。只写 `draft_content.json`。素材用剪辑师这台机器上的绝对路径。口播主轨切成段；每条空镜单独一条轨道；字幕用剪映文本，关键词上色；BGM、每条音效、人声分开音轨。
 
-花字、盖章、数字滚动、打字机做不进剪映原生特效。每条用 HTML/Canvas 单独渲染：Playwright 驱动系统装的 Chrome 逐帧截透明 PNG，视口 1080×1920、`device_scale_factor=1`、启动参数 `--font-render-hinting=none`，截图前等 `window.READY` 和 `document.fonts.ready`，`omit_background=True`；动画写成时间 t 的纯函数。PNG 序列以 `-framerate 30` 读入，编 ProRes 4444（`-alpha_bits 16`），每条一段，放上各自的特效轨。剪辑师可以挪、改时长、改变速、删掉或换成剪映花字，改不了动画内部。ffmpeg drawtext 做不出逐字入场、字在人后。不要把这些特效先合成进画面；合成进画面是 alpha 显示失败时的退路，那之后这条就不能单独调。
+花字、盖章、数字滚动、打字机做不进剪映原生特效。每条用 HTML/Canvas 单独渲染：Playwright 驱动 Chromium 逐帧截透明 PNG，视口 1080×1920、`device_scale_factor=1`、启动参数 `--font-render-hinting=none`，截图前等 `window.READY` 和 `document.fonts.ready`，`omit_background=True`；动画写成时间 t 的纯函数。进剪映的透明格式只有 ProRes 4444（`-alpha_bits 16`）或 PNG 序列，不要用 VP9 webm。解出来的像素格式是 `yuva444p12le` 也算通过。字已经做成剪映文本的，这条叠加只留图形，不要再渲染同一句字。手绘标记和剪映文字的对位要人看。剪辑师可以挪这些短片、改时长、改变速、删掉或换成剪映花字，改不了动画内部。ffmpeg drawtext 做不出逐字入场、字在人后。
 
 直接出成片时，再用 ffmpeg overlay 把这些层叠到口播上。
 - 叠加前对底片做轻微调色 `eq=contrast=1.04:saturation=1.07`。
 - 最终编码：`libx264 -profile:v high -preset slow -crf 17 -maxrate 16M -bufsize 24M -g 60 -r 30 -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709`，AAC 192k，`-movflags +faststart`。
 
-待验证的三件事：主文件是 `draft_content.json` 还是 `draft_info.json`；剪映是否把 alpha 显示对（不行就改 PNG 序列，或合成进画面）；素材路径必须是剪辑师这台机器上的 Windows 路径。
+仍待验证：分屏和小窗口的位置参数、空镜拖换、音乐闪避关键帧、在剪映里点导出。
 
-质检打在剪辑师从剪映导出的 mp4 上，不打在草稿上，也不必读草稿。Codex 用现有的 ffmpeg 和 Python 质检直接跑这个文件。复查项见 `references/qc_checklist.md`。
+质检打在剪辑师从剪映导出的 mp4 上，不打在草稿上，也不必读草稿。Codex 用现有的 ffmpeg 和 Python 质检直接跑这个文件，真峰值也在这个文件上重测。复查项见 `references/qc_checklist.md`。
 
 ## 第 9 步：质检（全部通过才交付）
 逐项按 `references/qc_checklist.md`。交付里要有 `timing_stats.csv` 和 `importance.csv`。走剪映时，质检打在剪辑师导出的 mp4 上，不打在草稿上。报告只写自己抽帧、听音频核实过的东西，每条带数字和单位；量不到的写「没量到」，不硬报。规则之间还没对齐的项写在报告开头，标「待确认」，不要改成通过，也不要改数字去消掉。
@@ -117,8 +117,8 @@ description: 剪竖屏口播短视频时使用（Windows + Codex）：用户给�
 - 全屏口播占比、单段纯口播、穿插时长符合 `references/pacing.md`；`timing_stats.csv` 里没有未说明的低于底线。底线互相打架的行保持「待确认」，不要写成通过。
 - `importance.csv` 已交付：高的偏长，低的偏短，写了删除的不在成片里。
 - 常规特效最长间隔 ≤3 秒；爆点 3–4 个且力度分档。「待确认」种类 18–22、每种最多 3 次、同一招只用一次，和这条间隔在 30–50 秒片上个数对不齐，见 `references/pacing.md`。
-- 音效工作值 ≤0.4 个/秒、任意 4 秒最多 3 个、无同时叠响。「待确认」剪辑师原话约 0.5 个/秒。卡点 ≤2 帧；−14 LUFS ±1、真峰值 ≤−1 dBTP。
-- 安全区越界 0；无意外黑帧/冻帧；字不压脸、不压品牌标识。
+- 音效工作值 ≤0.4 个/秒、任意 4 秒最多 3 个、无同时叠响。「待确认」0.4 是剪辑机器人在用户说音效太挤之后自己收的上限，不是用户的原话；剪辑师说过的标准是约 0.5 个/秒。卡点 ≤2 帧；−14 LUFS ±1、真峰值 ≤−1 dBTP。剪映导出的文件要再测真峰值。
+- 安全区越界 0；无意外黑帧。freezedetect 的命中要用相邻帧差确认，帧差正好是 0 才算卡住。字不压脸、不压品牌标识。
 - 用户确认过分镜表和重要程度表；交付物齐全。
 
 ## 常见坑 → 对策
@@ -133,7 +133,11 @@ description: 剪竖屏口播短视频时使用（Windows + Codex）：用户给�
 | 椅子被抠进人像 | 字放肩线以上；描边前擦掉 |
 | 卡点量错 | 从“看得清的第一帧”量；入场提前 1 帧 |
 | 齿音被当成音效 | demucs 分离人声后只在伴奏轨上测 |
-| 音效扎堆 | 工作值 ≤0.4 个/秒，任意 4 秒最多 3 个，高潮复合音效按 1 个计。「待确认」剪辑师原话约 0.5 个/秒 |
+| 音效扎堆 | 工作值 ≤0.4 个/秒，任意 4 秒最多 3 个，高潮复合音效按 1 个计。「待确认」0.4 不是用户原话，见 `references/pacing.md` |
+| freezedetect 把模糊静帧报成冻帧 | 相邻帧差正好是 0 才是卡住；大于 0 只是运动很小 |
+| 叠加用了 webm，剪映里全屏黑 | 只用 ProRes 4444 或 PNG 序列。查 webm 的 alpha 要用 `-c:v libvpx-vp9` |
+| 剪映文本和叠加各有一句字 | 字已经在剪映文本里的，叠加只留图形。手绘标记的对位要人看 |
+| 剪映导出真峰值超过 −1 dBTP | 剪映没有总线限幅。总音量降大约 0.5 dB，再导出复测 |
 | 章或大字进抖音按钮区 | 右边界 ≤ x 930 |
 | 边说话边定格、嘴型对不上 | 定格只放在静音里，≤0.4 秒 |
 | 动画滑入时扫过脸或出画 | 改为原位淡出 + 目标位放大淡入 |

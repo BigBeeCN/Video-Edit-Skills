@@ -1,10 +1,11 @@
 # 命令对照：Linux 实测命令 → Windows 写法
 
-来源：Linux 上实际跑通过的脚本（ffmpeg 7.1、Playwright 1.65、whisperX 3.8 + torch 2.8，均在 CPU 上运行）。标「未验证」的 Windows 写法尚未在实机跑过。
+来源：Linux 上实际跑通过的脚本（ffmpeg 7.1、Playwright 1.65、whisperX 3.8 + torch 2.8，均在 CPU 上运行）。标「未验证」的 Windows 写法尚未在实机跑过。标「已验证」的是后来在 Windows 上跑过、或在剪映 11.7 里打开确认过的那几条，范围只限条文里写的那一下。
 
 
 标记说明：
 - **「未验证」**：这条 Windows 写法没有在 Windows 上跑过。
+- **「已验证」**：Windows 上跑过，或剪映里打开确认过。没写进这句话的部分仍然算没测。
 - **「平台无关」**：纯 Python/numpy/wave/cv2 代码，不调用外部程序，也不涉及路径格式。
 - 推荐做法：在 Windows 上一律用 **Python `subprocess.run([...参数列表...])`** 调 ffmpeg，不要拼一整条字符串交给 PowerShell。我们的脚本本来就是参数列表写法，移到 Windows 时基本只需要改路径。
 
@@ -50,11 +51,12 @@ def vf_cover(path,zoom=1.0,ypos='(ih-1920)/2',extra=''):
 
 **Windows 对应**
 - Python 参数列表：同一个滤镜字符串可以直接用。「未验证」
-- **前提是 ffmpeg 必须带 zimg（zscale 滤镜）**。推荐 gyan.dev 的 *full* build（essentials 版可能不带）。先自检：「未验证」
+- **前提是 ffmpeg 必须带 zimg（zscale 滤镜）和 libx264**。用 gyan.dev 的 *full* build，或项目 `tools` 目录里的便携完整版。先 `where.exe ffmpeg`：PATH 里可能没有；剪映安装目录里那份没有 zscale、也没有 libx264，不能算自检通过。「已验证」
   ```powershell
   & ffmpeg -hide_banner -filters | Select-String "zscale|tonemap"
+  & ffmpeg -hide_banner -encoders | Select-String "libx264|prores_ks"
   ```
-  如果没有 zscale，HLG 素材会报错，或者直接按 SDR 处理导致画面发灰（见坑 7）。
+  如果没有 zscale，HLG 素材会报错，或者直接按 SDR 处理导致画面发灰（见坑 7）。上面这条 HDR 滤镜链本身这次没拿 HLG 素材跑，仍「未验证」。
 - 如果 Skill 需要先输出 CFR 的中间文件（我们没有这样做），可以写成下面这样（用上面同一个 vf 字符串，PowerShell 里用单引号包住）。这条我们没跑过：「未验证」
   ```powershell
   & ffmpeg -y -i "D:\素材\in.MOV" -vf '<同上 vf_cover 字符串>' -c:v libx264 -crf 12 -preset veryfast -an "D:\work\in_cfr30.mp4"
@@ -157,7 +159,7 @@ glob(os.path.join(d,f'* {code}.*'))
 **Windows**
 - JSON 本身「平台无关」。
 - `raw_dirs`、`music.file` 里的 Windows 路径在 JSON 里要写成 `"D:/素材/261031"`（正斜杠）或 `"D:\\素材\\261031"`（双反斜杠）。「未验证」
-- JSON 文件要存成 UTF-8；Python 读的时候写 `open(p,encoding='utf-8')`。我们的脚本没写 encoding，在 Linux 上默认就是 UTF-8，在 Windows 上默认可能是 GBK（见坑 1）。「未验证」
+- JSON 文件要存成 UTF-8；Python 读的时候写 `open(p,encoding='utf-8')`。显式 utf-8 往返中文 JSON 已在 Windows 上通过。「已验证」。不写 encoding 时默认仍可能是 GBK（见坑 1）。
 
 ---
 
@@ -187,8 +189,9 @@ glob(os.path.join(d,f'* {code}.*'))
   - 例外：v2 在「螺丝」之后有一段**故意保留**的 0.4s 定格停顿，该切点测出 490ms。
 
 **Windows**
-- 参数列表照用。「未验证」
-- `list.txt` 里的 Windows 路径建议写成正斜杠 `file 'D:/work/seg001.mp4'`。路径里有单引号要转义成 `'\''`。「未验证」
+- `-ss` 放在 `-i` 前、`-frames:v` 定长、libx264 重编码：已出过 1.000 秒、30 帧。「已验证」整段 `vf_cover`（含 HDR）这次没跑，「未验证」。
+- `list.txt` 里的 Windows 路径用正斜杠 `file 'D:/work/seg001.mp4'`。三段各 1 秒接成 3.000 秒、90 帧。「已验证」。路径里有单引号要转义成 `'\''`，这下没测，「未验证」。
+- 量剪点到起音的提前量时，源时间用草稿里的 `source_timerange.start`，不要用 `target_timerange.start`。跳切之后两者可以差几十秒；用错会把过线的剪点量成没起音或提前过多。按 source 量：29/29 ≤67 ms，最大 40 ms。「已验证」的是能量口径，人声是已经降噪压缩的单轨，没有跑 demucs。试听是否吞字头、剪段重跑 ASR，还没做，待验证。听感确认之前，默认仍是切点两侧低于 −42 dBFS 的连续长度合计 ≤90 ms。
 - 能量计算代码「平台无关」。
 
 ---
@@ -214,19 +217,20 @@ ProRes 4444 带透明通道（`render.py --prores` 和 `highlight.py` 用的是�
 ['ffmpeg','-v','error','-y','-framerate','30','-i','overlay/%05d.png',
  '-c:v','prores_ks','-profile:v','4444','-pix_fmt','yuva444p10le','-alpha_bits','16','<name>_overlay_prores4444.mov']
 ```
+- 编码参数可以写 `yuva444p10le`。ffmpeg 7.1 解 ProRes 4444 得到的是 `yuva444p12le`（Windows 上的完整版也是）。自检看到 `profile=4444` 且 `pix_fmt` 为 `yuva444p12le` 或 `yuva444p10le` 都算带 alpha，不要因为不是 10le 判失败。
 - 一条命令出片：`python3 render.py specs/xxx.json --workers 4 --prores`
 - 高光测试：`python3 highlight.py specs/highlight_test_v2.json`
 
 **Windows**
-- 装 Playwright 和浏览器：「未验证」
+- 装 Playwright 和浏览器：「已验证」`python -m playwright install chromium` 能下到 Chromium，并截出透明 PNG，再编成 ProRes 4444。
   ```powershell
   pip install playwright; python -m playwright install chromium
   ```
-  装好后可以不传 `executable_path`，直接用 Playwright 自带的 Chromium；或者设环境变量 `$env:CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe"`。
-- `'file://'+os.path.abspath(html)` 在 Windows 上会拼出 `file://C:\...`，这是错误的 URL。要改成 `pathlib.Path(html).resolve().as_uri()`，得到 `file:///C:/...`。「未验证」
+  装好后可以不传 `executable_path`，直接用 Playwright 自带的 Chromium；或者设环境变量 `$env:CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe"`。不传 `executable_path` 这次没单独记，待验证。
+- `'file://'+os.path.abspath(html)` 在 Windows 上会拼出 `file://C:\...`，这是错误的 URL。要改成 `pathlib.Path(html).resolve().as_uri()`，得到 `file:///C:/...`。「已验证」
 - **`multiprocessing` 在 Windows 上用 spawn 方式启动子进程**，所以 `render.py` 和 `highlight.py` 的顶层代码必须包进 `if __name__=='__main__':`。我们现在的脚本没有包，在 Windows 上一定要改，否则子进程会重新执行整个脚本。「未验证」
-- ProRes 那条参数列表照用；gyan.dev 的 build 带 `prores_ks`。「未验证」
-- 剪映：ProRes 4444 的 .mov 能不能在剪映里保留透明通道，我们没有验证。备选方案是直接导入 PNG 序列，或者先在 ffmpeg 里合成好再导入。「未验证」
+- ProRes 那条参数列表：完整版带 `prores_ks`，PNG 序列能编成 `profile=4444`。「已验证」解出来的像素格式见上面，认 `yuva444p12le`。
+- 剪映里的透明：「已验证」ProRes 4444 的 `.mov` 和 PNG 序列是透明的。不要用 VP9 `.webm`，剪映里是全屏黑。webm 发黑不是因为文件没有 alpha：alpha 在 side data（BlockAdditional）里，ffmpeg 默认的原生 vp9 解码器会丢掉它，`alphaextract` 会看成 alpha 全 255；换成 `-c:v libvpx-vp9` 能解出透明。剪映同样不读这条 side data。要检查某条 webm 的 alpha，必须加 `-c:v libvpx-vp9`。进草稿仍只用 ProRes 4444 或 PNG 序列。
 
 ---
 
@@ -280,7 +284,7 @@ ol=np.clip(cv2.GaussianBlur(d,(0,0),1.5)-mf,0,1)   # 减去“完整”抠像：
 
 **Windows**
 - 参数列表照用。「未验证」
-- PNG 序列的 `%05d` 在 PowerShell 里不需要转义；但在 cmd 的 `.bat` 文件里要写成 `%%05d`。「未验证」
+- PNG 序列的 `%05d` 在 PowerShell 里不需要转义；但在 cmd 的 `.bat` 文件里要写成 `%%05d`。`.bat` 里写 `%%05d` 能生成 `b_00001.png` 这种序列；写成 `%05d` 会被 cmd 吃掉。「已验证」
 
 ---
 
@@ -325,9 +329,11 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 - 实测：高光测试 v1 是 −14.0 LUFS / −4.1 dBTP；v2 是 −14.0 LUFS / −4.0 dBTP。
 
 **Windows**
-- 滤镜链照用；gyan.dev full build 带 afftdn、sidechaincompress、loudnorm。「未验证」
-- 输出到 `-f null -` 时，用 `-` 两个平台都能用（我们一直这样写）。Windows 上也可以写 `-f null NUL`。「未验证」
-- loudnorm 的 JSON 我们是从 stderr 里截取的：`r.stderr[r.stderr.rfind('{'):r.stderr.rfind('}')+1]`。Windows 上 stderr 可能带 `\r\n`，并且要用 `text=True, encoding='utf-8', errors='replace'` 读。「未验证」
+- 完整版带 afftdn、sidechaincompress、loudnorm。「已验证」滤镜在。整条人声链和侧链这次没逐项对照，仍「未验证」。
+- 两遍 loudnorm 都要跑。5 秒短样例走完第二遍（`linear=true` 加限幅）复测是 −15.3 LUFS，比 −14 低 1.3，超出 ±1。短样例不能当整片结果。整片按上面的两遍加补增益，这次成片复测 −14.0 LUFS、真峰值 −3.4 dBTP。「已验证」
+- 输出到 `-f null -` 时，用 `-` 两个平台都能用。Windows 上测响度就是这样跑的。「已验证」。`-f null NUL` 没单独测。
+- loudnorm 的 JSON 我们是从 stderr 里截取的：`r.stderr[r.stderr.rfind('{'):r.stderr.rfind('}')+1]`。Windows 上 stderr 可能带 `\r\n`，并且要用 `text=True, encoding='utf-8', errors='replace'` 读。这次测到了第一遍的 JSON 字段，截取写法本身没单独证伪，「未验证」仍建议保留 utf-8。
+- 剪映没有总线限幅。导出文件的真峰值要另测，见 `jianying_route.md`。
 
 ---
 
@@ -352,10 +358,10 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 |---|---|---|
 | 卡点（首个可读帧） | `python3 tools_onset_check.py <name>`（字幕预设库）；`python3 tools_hl_onset.py <name>`（高光测试）。在同一个页面里逐帧调用 `renderFrame` 和 `fxState()`。“可读”指字的不透明度 ≥0.5，或手绘线已画出 ≥25%。偏差要求 ≤2 帧；v2 实测最大 0.75 帧 | 改 file URI 后照用。「未验证」 |
 | 安全区、压脸、压 logo、层数 | 渲染时每帧调用 `checkSafe()`，结果写到 `out/<name>_safe_violations.json`（要求为 `[]`）。安全区 x 90–930、y 200–1540；人脸框来自 YuNet（`models/yunet.onnx`，`cv2.FaceDetectorYN`）；logo 避让带；同屏 >3 层算违规 | 同上。「未验证」 |
-| 接触表（每秒一张） | `ffmpeg -i out.mp4 -vf "fps=1,scale=216:384,drawtext=fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:text='%{pts\:gmtime\:0\:%M\\\:%S}':x=4:y=4:fontsize=20:fontcolor=red:box=1:boxcolor=white@0.7,tile=10xN:padding=4:color=gray" -frames:v 1 -q:v 3 qc.jpg`（`render.py`、`work/qc.py`；Python 里转义层数更多，以脚本原文为准） | fontfile 改成 `C\:/Windows/Fonts/msyhbd.ttc` 这种写法：冒号要转义，用正斜杠。「未验证」 |
-| 响度 | `ffmpeg -hide_banner -i out.mp4 -af ebur128=peak=true -f null -`，从 stderr 最后的 Summary 里读 `I:` 和 `Peak:` | 照用。「未验证」 |
-| 黑帧 | `ffmpeg -hide_banner -i out.mp4 -vf blackdetect=d=0.1:pix_th=0.08 -an -f null -`（`work/qc.py`，用正则抓 `black_start/black_end`） | 照用。「未验证」 |
-| 定格检测 freezedetect | Linux 上已跑过：`ffmpeg -i out.mp4 -vf "freezedetect=n=0.003:d=0.2" -an -f null -`，两版测试片都只检出分镜里那一处定格。`d` 是能报出的最短冻帧，再用 `d=0.1` 扫一遍抓 2–3 帧的卡顿。freezedetect 不算入场动画，报出的时长比 spec 短（例：spec 0.43 s，只报 0.233 s）；核对定格时长用 PyAV 逐帧算帧差为 0 的区间 | 「未验证」 |
+| 接触表（每秒一张） | `ffmpeg -i out.mp4 -vf "fps=1,scale=216:384,drawtext=fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:text='%{pts\:gmtime\:0\:%M\\\:%S}':x=4:y=4:fontsize=20:fontcolor=red:box=1:boxcolor=white@0.7,tile=10xN:padding=4:color=gray" -frames:v 1 -q:v 3 qc.jpg`（`render.py`、`work/qc.py`；Python 里转义层数更多，以脚本原文为准） | fontfile 写成 `fontfile='C\:/Windows/Fonts/msyh.ttc'`：值用单引号，冒号转义，正斜杠。只写 `C\:/...` 不加引号会报 `No option name`。「已验证」接触表整条拼图命令这次没跑 |
+| 响度 | `ffmpeg -hide_banner -i out.mp4 -af ebur128=peak=true -f null -`，从 stderr 最后的 Summary 里读 `I:` 和 `Peak:` | 照用。「已验证」整片 −14.0 LUFS、真峰值 −3.4 dBTP。剪映导出的文件要再测，见 `jianying_route.md` |
+| 黑帧 | `ffmpeg -hide_banner -i out.mp4 -vf blackdetect=d=0.1:pix_th=0.08 -an -f null -`（`work/qc.py`，用正则抓 `black_start/black_end`） | 命令能跑。「已验证」`d=0.05:pix_th=0.05` 的那次是 0 条。上表这个阈值没单独跑 |
+| 定格检测 freezedetect | Linux 上已跑过：`ffmpeg -i out.mp4 -vf "freezedetect=n=0.003:d=0.2" -an -f null -`，两版测试片都只检出分镜里那一处定格。`d` 是能报出的最短冻帧，再用 `d=0.1` 扫一遍抓 2–3 帧的卡顿。freezedetect 不算入场动画，报出的时长比 spec 短（例：spec 0.43 s，只报 0.233 s）；核对定格时长用 PyAV 逐帧算帧差为 0 的区间 | 命令在 Windows 上能跑。「已验证」模糊或压暗的镜头上，每一条命中都要用相邻帧差再确认：帧差正好是 0 才是卡住，大于 0 只是运动很小。有一条成片在 19.5 秒报了 0.37 秒，帧差大于 0，是模糊后几乎不动的口播，误报。见 `qc_checklist.md` 第 5 项 |
 | 定格只能落在静音里 | v2 用的是临时内联脚本：读 `work/<name>/voice.wav`，每 10ms/20ms 算 RMS dBFS，要求定格区间内 ≤ −45 dB（实测平均 −53.2，最大 −45）；冻结用的帧是按嘴部裁图人工挑的（`out/highlight_test_v2_freeze_mouth.jpg`） | 「平台无关」（wave + numpy） |
 | 换气空隙 | `tools_hl_onset.py` 的后半部分：切点两侧低于 −42 dBFS 的连续长度 ≤90ms | 「平台无关」 |
 | 抠像边缘 | 头发、手、椅子三处的局部放大（合成图和 alpha 并排），由 `highlight.py` 跑完后用内联 cv2 生成 | 「平台无关」 |
@@ -368,7 +374,7 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 | # | 坑 | 检查方法 |
 |---|---|---|
 | 1 | **中文路径、空格**：我们的素材文件名就带空格（`XXX 094102.MOV`）。PowerShell 必须加引号 `"D:\素材\IMG 094102.MOV"`；字符串里有 `$` 时用单引号。Python 用参数列表就不需要引号。Windows 上的 `open()` 默认编码可能是 GBK | 把一个带中文和空格的路径交给 ffprobe 跑一遍；所有 `open()` 都显式写 `encoding='utf-8'`；`subprocess.run(..., encoding='utf-8', errors='replace')` |
-| 2 | **字体路径**：drawtext 的 `fontfile=` 要写文件路径，Windows 上冒号要转义成 `C\:/Windows/Fonts/xxx.ttc`。网页 CSS 里我们写的是 `font-family:'Noto Sans CJK SC'` / `'Noto Serif CJK SC'`，依赖系统已经装了这些字体；Windows 默认没有 Noto CJK | 先装 Noto Sans/Serif CJK SC，或者在 CSS 里用 `@font-face{src:url(file:///C:/...)}` 指向字体文件；渲染一帧截图，确认不是宋体或微软雅黑在顶替；接触表上的 drawtext 要显示中文、不能是方块 |
+| 2 | **字体路径**：drawtext 的 `fontfile=` 要写成 `fontfile='C\:/Windows/Fonts/msyh.ttc'`，单引号包住，冒号转义。只转义不加引号会报 `No option name`。网页 CSS 里我们写的是 `font-family:'Noto Sans CJK SC'` / `'Noto Serif CJK SC'`，依赖系统已经装了这些字体；Windows 默认没有 Noto CJK | 先装目标字体，或者在 CSS 里用 `@font-face{src:url(file:///C:/...)}` 指向字体文件；渲染一帧截图，确认是目标字体；接触表上的 drawtext 要显示中文、不能是方块 |
 | 3 | **`NUL` 和 `/dev/null`**：测量类命令要丢弃输出 | 统一写 `-f null -`，两个平台都能用；PowerShell 里要写 NUL 时用 `-f null NUL` |
 | 4 | **续行符**：PowerShell 用反引号 `` ` ``，bash 用反斜杠 `\`；filtergraph 里的 `\:` 在 PowerShell 双引号里不会被吃掉，但 `$` 会被当成变量 | 一律用 Python 参数列表；非要写 PowerShell 就用单引号包 filtergraph，并 echo 出来核对 |
 | 5 | **WSL 和 Windows 路径**：`/mnt/c/Users/...` 对应 `C:\Users\...`。在 WSL 里跑的 Linux ffmpeg 不认 `C:\`，Windows 版的 ffmpeg 不认 `/mnt/c` | 一个流水线里只用一种环境；需要转换时用 `wslpath -w` / `wslpath -u`；每一步都打印绝对路径 |
@@ -387,11 +393,11 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 ## 13. Linux 和 Windows 的差异（简表）
 
 - **Shell**：bash 和 PowerShell 的引号、续行、`$` 规则都不一样 → 用 Python 参数列表就能避开。
-- **ffmpeg**：Debian 自带的包已经有 zimg 和全部滤镜；Windows 要选 gyan.dev full build，并自检 zscale、afftdn、sidechaincompress、prores_ks。
-- **字体**：Linux 装好了 Noto CJK（在 `/usr/share/fonts/opentype/noto/`）；Windows 要另装，drawtext 路径要转义冒号。
+- **ffmpeg**：Debian 自带的包已经有 zimg 和全部滤镜；Windows 要选 gyan.dev full build（或项目 `tools` 里的便携完整版），并自检 zscale、libx264、afftdn、sidechaincompress、prores_ks。剪映自带的 ffmpeg 不算。
+- **字体**：Linux 装好了 Noto CJK（在 `/usr/share/fonts/opentype/noto/`）；Windows 要另装目标字体。drawtext 写成 `fontfile='C\:/Windows/Fonts/msyh.ttc'`。
 - **浏览器**：Linux 用 `/usr/bin/google-chrome`；Windows 用 Playwright 自带的 Chromium，或 `C:\Program Files\...\chrome.exe`，网页地址用 `as_uri()`。
 - **进程**：Linux 的 multiprocessing 用 fork；Windows 用 spawn，需要 `__main__` 保护，子进程启动也更慢。
 - **编码**：Linux 默认 UTF-8；Windows 默认可能是 GBK，所有文件读写都要写 `encoding='utf-8'`。
 - **GPU**：我们全程在 CPU 上跑（int8 whisper、CPU 对齐、CPU 抠像）；Windows 有 N 卡可以开 CUDA，但需要匹配的 torch 和 cuDNN，没有验证过。
 - **路径**：Linux 路径和 `D:\...`；脚本里写死的 `/tmp`、`/usr/share/fonts`、`...` 都要改成可配置的。
-- **剪映**：草稿怎么建、哪些能改、alpha 短片怎么放，见 `jianying_route.md`。整步待验证。质检打在剪辑师导出的 mp4 上，不必读草稿。`caption_presets.json` 里的 `jianying` 字段仍是未实测。
+- **剪映**：哪些已经在 11.7 里打开确认、哪些还没测，见 `jianying_route.md`。质检打在剪辑师导出的 mp4 上，不必读草稿。导出本身待验证。`caption_presets.json` 里的 `jianying` 字段仍是未实测。
