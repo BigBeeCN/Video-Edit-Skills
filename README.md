@@ -2,7 +2,7 @@
 
 本仓库提供竖屏口播剪辑 skill `vertical-talking-head-edit`。在 Windows 上使用 OpenAI Codex（CLI、IDE 扩展或桌面版）时，克隆本仓库或按下面的方式安装后，Codex 会发现这个 skill：用户要求把已经拍好的口播视频剪成竖屏短视频时，按 `description` 隐式调用它。
 
-Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效，最后交付剪映草稿或叠加层成片。不涉及拍摄环节。
+Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效。交付成片，并附重要程度表和时长统计表。剪映工程给剪辑师自己改特效、空镜时长和变速。剪映 11.7 上已经打开确认过主文件、绝对路径、ProRes/PNG 透明和口播变速；分屏位置、空镜替换、音乐闪避和剪映导出仍待验证。导出没跑通之前，保底是成片 + SRT + 分镜表。不涉及拍摄环节。
 
 ## 仓库布局
 
@@ -11,7 +11,7 @@ Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把�
 ├── .agents/skills/vertical-talking-head-edit/
 │   ├── SKILL.md                 # name、description 与剪辑流程
 │   ├── agents/openai.yaml       # 显示名、短说明、默认提示、允许隐式调用
-│   └── references/              # 环境、命令、分镜、质检、硬规则
+│   └── references/              # 环境、命令、分镜、节奏、质检、剪映、硬规则
 ├── install.ps1                  # 安装到用户目录（USER 范围）
 ├── templates/AGENTS.md          # 贴进视频项目 AGENTS.md 的片段
 ├── .gitattributes
@@ -95,15 +95,15 @@ Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把�
 
 以下内容概括自 `.agents/skills/vertical-talking-head-edit/references/windows_env.md` 的自检清单，开工前需要准备：
 
-- **ffmpeg 完整版**（推荐 gyan.dev full build）：滤镜需有 `zscale`、`tonemap`、`afftdn`、`sidechaincompress`、`loudnorm`、`ebur128`、`blackdetect`、`freezedetect`，编码器需有 `prores_ks`、`libx264`。
+- **ffmpeg 完整版**（推荐 gyan.dev full build，或放在项目 `tools` 目录里的便携完整版）：滤镜需有 `zscale`、`tonemap`、`afftdn`、`sidechaincompress`、`loudnorm`、`ebur128`、`blackdetect`、`freezedetect`，编码器需有 `prores_ks`、`libx264`。剪映安装目录里自带的 ffmpeg 没有 zscale 和 libx264，不能算通过。PATH 里没有 ffmpeg 或 python 时，自检要指向这份完整版和便携 Python，不要用 Microsoft Store 的占位 `python.exe`。
 - **Python 3.10 或 3.11**。pyJianYingDraft 自动导出依赖的 uiautomation 在 3.13 上可能出问题。
 - **听写**：faster-whisper 与 whisperX 分别装在两个独立环境，模型已下载，各自环境里能 `import`。
 - **特效层**：安装 Playwright 后执行 `python -m playwright install chromium`，渲染一帧时中文是目标字体。目标字体已安装，或在 CSS 里用 `@font-face` 指向字体文件。
 - **可选**：demucs、onnxruntime / torch（RVM）。能导入即可；没有就用剪映「智能抠像」。
 - **剪映草稿目录**：在剪映「全局设置」的草稿位置中查到并写入配置，目录存在且可写。
 
-Codex 默认使用原生 PowerShell 与 Windows 沙箱。`workspace-write` 模式下网络默认关闭：安装依赖、下载 Whisper / whisperX / RVM 模型前要提前装好，或在 `config.toml` 里临时打开 `sandbox_workspace_write.network_access`。写入工作区外的剪映草稿目录时，把该目录加入 `writable_roots`。
+Codex 默认使用原生 PowerShell 与 Windows 沙箱。`workspace-write` 模式下网络默认关闭：安装依赖、下载 Whisper / whisperX / RVM 模型前要提前装好，或在 `config.toml` 里临时打开 `sandbox_workspace_write.network_access`。写入工作区外的剪映草稿目录时，把该目录加入 `writable_roots` 并重启。没配的时候，沙箱写工作区外会直接拒绝，不弹批准。工作区如果是只读沙箱，写文件要 `require_escalated`。
 
-## 待验证
+## 已在 Windows 上验证过 / 仍待验证
 
-标有「待验证」的条目还没有在真实 Windows 机器上测试过。首次实测时，按 `.agents/skills/vertical-talking-head-edit/references/windows_env.md` 里的「Windows 首次实测清单」逐项确认，通过后再去掉对应标记。`install.ps1` 以及方式 C（`$skill-installer`）同样还没有在真实 Windows 机器上运行过。
+剪映 11.7 和 Codex 桌面版上已经确认过的，写在 `references/jianying_route.md` 和 `references/windows_env.md`，标了「已验证」。还没测的保持「待验证」，包括：分屏和小窗口的位置、空镜拖换、音乐闪避关键帧、在剪映里点导出、听感确认字头没被切掉、whisper / whisperX / demucs / torch。`install.ps1` 以及方式 C（`$skill-installer`）还没有在真实 Windows 机器上运行过。
