@@ -2,7 +2,7 @@
 
 本仓库提供竖屏口播剪辑 skill `vertical-talking-head-edit`。在 Windows 上使用 OpenAI Codex（CLI、IDE 扩展或桌面版）时，克隆本仓库或按下面的方式安装后，Codex 会发现这个 skill：用户要求把已经拍好的口播视频剪成竖屏短视频时，按 `description` 隐式调用它。
 
-Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效。交付成片，并附重要程度表和时长统计表。剪映工程给剪辑师自己改特效、空镜时长和变速。剪映 11.7 上已经打开确认过主文件、绝对路径、ProRes/PNG 透明和口播变速；分屏位置、空镜替换、音乐闪避和剪映导出仍待验证。导出没跑通之前，保底是成片 + SRT + 分镜表。不涉及拍摄环节。
+Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把别人已经拍好的竖屏口播素材（企业口播、实拍、空镜）剪成 9:16 抖音风短视频：素材体检、听写对齐、叙事重组、分镜、剪气口、两档字幕特效与音效。交付成片，并附重要程度表和时长统计表。剪映工程给剪辑师自己改特效、空镜时长和变速。剪映 11.7 上已经打开确认过主文件、绝对路径、ProRes/PNG 透明和口播变速；分屏和画中画位置、空镜拖动替换、音乐闪避、剪映导出及导出 QC、手绘对齐仍待核验。导出没跑通之前，保底是成片 + SRT + 分镜表。不涉及拍摄环节。
 
 ## 仓库布局
 
@@ -81,7 +81,7 @@ Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把�
 
 ## 为什么要在视频项目里放 AGENTS.md
 
-把 `templates/AGENTS.md` 整段贴进你自己的视频项目根目录 `AGENTS.md`。Codex 每次开场都会读项目里的 `AGENTS.md`。这段要求：凡是剪辑、处理竖屏口播视频，先调用 `$vertical-talking-head-edit` 并按它的步骤执行，后面是 skill 规定必须放进 `AGENTS.md` 的硬规则（原文在 `references/AGENTS_rules.md`）。这样即使用户没点名 skill，或 description 被截短、这次没自动选中，剪辑任务仍会走这条流程。
+把 `templates/AGENTS.md` 整段贴进你自己的视频项目根目录 `AGENTS.md`。Codex 每次开场都会读项目里的 `AGENTS.md`。这段要求：凡是剪辑、处理竖屏口播视频，先调用 `$vertical-talking-head-edit` 并按它的步骤执行，后面是 skill 规定必须放进 `AGENTS.md` 的硬规则（原文在 `.agents/skills/vertical-talking-head-edit/references/AGENTS_rules.md`）。这样即使用户没点名 skill，或 description 被截短、这次没自动选中，剪辑任务仍会走这条流程。
 
 ## description 被截短时
 
@@ -104,6 +104,10 @@ Windows 平台 Codex 竖屏口播剪辑 skill。在 Windows 上用 Codex，把�
 
 Codex 默认使用原生 PowerShell 与 Windows 沙箱。`workspace-write` 模式下网络默认关闭：安装依赖、下载 Whisper / whisperX / RVM 模型前要提前装好，或在 `config.toml` 里临时打开 `sandbox_workspace_write.network_access`。写入工作区外的剪映草稿目录时，把该目录加入 `writable_roots` 并重启。没配的时候，沙箱写工作区外会直接拒绝，不弹批准。工作区如果是只读沙箱，写文件要 `require_escalated`。
 
-## 已在 Windows 上验证过 / 仍待验证
+## 已在 Windows 上验证过 / 仍待核验
 
-剪映 11.7 和 Codex 桌面版上已经确认过的，写在 `references/jianying_route.md` 和 `references/windows_env.md`，标了「已验证」。还没测的保持「待验证」，包括：分屏和小窗口的位置、空镜拖换、音乐闪避关键帧、在剪映里点导出、听感确认字头没被切掉、whisper / whisperX / demucs / torch。`install.ps1` 以及方式 C（`$skill-installer`）还没有在真实 Windows 机器上运行过。
+剪映 11.7 和 Codex 桌面版上已经确认过的，写在 `.agents/skills/vertical-talking-head-edit/references/jianying_route.md` 和 `.agents/skills/vertical-talking-head-edit/references/windows_env.md`，标了「已验证」。还没测的保持「待核验」，包括：分屏和画中画 / 小窗口的位置、空镜拖动替换、音乐闪避关键帧、在剪映里点导出以及导出成片 QC、手绘标记对齐、听感确认字头没被切掉、whisper / whisperX / demucs / torch。`install.ps1` 以及方式 C（`$skill-installer`）还没有在真实 Windows 机器上运行过。新片的最终用户验收同样待核验。
+
+## 流程修订草稿
+
+`.agents/skills/vertical-talking-head-edit/references/process_gates.md` 是一轮流程修订草稿，供审阅。它不替代 `.agents/skills/vertical-talking-head-edit/references/pacing.md` 里已认可的 v6 节奏，也不放宽稳定停留、安全区和间隔检查。缓存、自动失效和增量渲染没有实现。没有提速实测。一次制作的钟点只在 `.agents/skills/vertical-talking-head-edit/references/case_notes.md`，是协作者回报，未独立验证，不是标准工时。

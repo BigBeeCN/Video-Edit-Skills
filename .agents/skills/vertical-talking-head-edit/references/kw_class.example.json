@@ -23,7 +23,7 @@
   "sfx_per_4s_note": "任意 4 秒最多 3 个。v6 没有「每 4 秒至少 1 个」。相邻间隔约 0.87–4.47 秒。",
   "fx_types_per_44s": 22,
   "fx_type_max_uses": 3,
-  "fx_types_note": "种类数按片长缩放：约 44 秒 22 种，每种最多 3 次，不连续用同一种。不是死的 18–22。见 pacing.md。",
+  "fx_types_note": "v6 成片约 44 秒用过 22 种，这是计数，不是必达配额，也不按每 2 秒一种或 18–22 种去凑。字效按内容从效果库里选。每种最多 3 次，不连续用同一种。间隔、稳定停留、安全区仍按 pacing.md，不放宽。",
   "sfx_distribution": "v6 间隔约 0.87–4.47 秒，不是为了凑 0.5 个/秒去均匀铺满",
   "sync_max_frames": 2
  },
@@ -292,7 +292,8 @@
    1.2,
    1.4
   ],
-  "max_fx_per_line": 2
+  "max_fx_per_line": 2,
+  "timing_note": "这里的 in_ms、out_ms、char_stagger_ms 是旧示例，不覆盖 pacing.md。入场帧数以 pacing.md 的 v6 为准。"
  },
  "source_priority": [
   "剪辑师本人习惯（硬标准）",
