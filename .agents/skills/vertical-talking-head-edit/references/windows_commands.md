@@ -4,7 +4,7 @@
 
 
 标记说明：
-- **「未验证」**：这条 Windows 写法没有在 Windows 上跑过。
+- **「未验证」**：这条 Windows 写法没有在 Windows 上跑过。和「待核验」一样，表示还没通过，不是待实现。
 - **「已验证」**：Windows 上跑过，或剪映里打开确认过。没写进这句话的部分仍然算没测。
 - **「平台无关」**：纯 Python/numpy/wave/cv2 代码，不调用外部程序，也不涉及路径格式。
 - 推荐做法：在 Windows 上一律用 **Python `subprocess.run([...参数列表...])`** 调 ffmpeg，不要拼一整条字符串交给 PowerShell。我们的脚本本来就是参数列表写法，移到 Windows 时基本只需要改路径。
@@ -191,7 +191,7 @@ glob(os.path.join(d,f'* {code}.*'))
 **Windows**
 - `-ss` 放在 `-i` 前、`-frames:v` 定长、libx264 重编码：已出过 1.000 秒、30 帧。「已验证」整段 `vf_cover`（含 HDR）这次没跑，「未验证」。
 - `list.txt` 里的 Windows 路径用正斜杠 `file 'D:/work/seg001.mp4'`。三段各 1 秒接成 3.000 秒、90 帧。「已验证」。路径里有单引号要转义成 `'\''`，这下没测，「未验证」。
-- 量剪点到起音的提前量时，源时间用草稿里的 `source_timerange.start`，不要用 `target_timerange.start`。跳切之后两者可以差几十秒；用错会把过线的剪点量成没起音或提前过多。按 source 量：29/29 ≤67 ms，最大 40 ms。「已验证」的是能量口径，人声是已经降噪压缩的单轨，没有跑 demucs。试听是否吞字头、剪段重跑 ASR，还没做，待验证。听感确认之前，默认仍是切点两侧低于 −42 dBFS 的连续长度合计 ≤90 ms。
+- 量剪点到起音的提前量时，源时间用草稿里的 `source_timerange.start`，不要用 `target_timerange.start`。跳切之后两者可以差几十秒；用错会把过线的剪点量成没起音或提前过多。按 source 量：29/29 ≤67 ms，最大 40 ms。「已验证」的是能量口径，人声是已经降噪压缩的单轨，没有跑 demucs。试听是否吞字头、剪段重跑 ASR，还没做，待核验。听感确认之前，默认仍是切点两侧低于 −42 dBFS 的连续长度合计 ≤90 ms。
 - 能量计算代码「平台无关」。
 
 ---
@@ -226,7 +226,7 @@ ProRes 4444 带透明通道（`render.py --prores` 和 `highlight.py` 用的是�
   ```powershell
   pip install playwright; python -m playwright install chromium
   ```
-  装好后可以不传 `executable_path`，直接用 Playwright 自带的 Chromium；或者设环境变量 `$env:CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe"`。不传 `executable_path` 这次没单独记，待验证。
+  装好后可以不传 `executable_path`，直接用 Playwright 自带的 Chromium；或者设环境变量 `$env:CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe"`。不传 `executable_path` 这次没单独记，待核验。
 - `'file://'+os.path.abspath(html)` 在 Windows 上会拼出 `file://C:\...`，这是错误的 URL。要改成 `pathlib.Path(html).resolve().as_uri()`，得到 `file:///C:/...`。「已验证」
 - **`multiprocessing` 在 Windows 上用 spawn 方式启动子进程**，所以 `render.py` 和 `highlight.py` 的顶层代码必须包进 `if __name__=='__main__':`。我们现在的脚本没有包，在 Windows 上一定要改，否则子进程会重新执行整个脚本。「未验证」
 - ProRes 那条参数列表：完整版带 `prores_ks`，PNG 序列能编成 `profile=4444`。「已验证」解出来的像素格式见上面，认 `yuva444p12le`。
@@ -333,7 +333,7 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 - 两遍 loudnorm 都要跑。5 秒短样例走完第二遍（`linear=true` 加限幅）复测是 −15.3 LUFS，比 −14 低 1.3，超出 ±1。短样例不能当整片结果。整片按上面的两遍加补增益，这次成片复测 −14.0 LUFS、真峰值 −3.4 dBTP。「已验证」
 - 输出到 `-f null -` 时，用 `-` 两个平台都能用。Windows 上测响度就是这样跑的。「已验证」。`-f null NUL` 没单独测。
 - loudnorm 的 JSON 我们是从 stderr 里截取的：`r.stderr[r.stderr.rfind('{'):r.stderr.rfind('}')+1]`。Windows 上 stderr 可能带 `\r\n`，并且要用 `text=True, encoding='utf-8', errors='replace'` 读。这次测到了第一遍的 JSON 字段，截取写法本身没单独证伪，「未验证」仍建议保留 utf-8。
-- 剪映没有总线限幅。导出文件的真峰值要另测，见 `jianying_route.md`。
+- 剪映没有总线限幅。导出文件要同时重测综合响度 I 和真峰值，见 `jianying_route.md`。−1 dBTP 是本项目可配置的交付上限，不是已核实的抖音官方要求。降总音量之后不能只凭降了多少就通过。低清预览不能代替这次测量。
 
 ---
 
@@ -359,9 +359,9 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 | 卡点（首个可读帧） | `python3 tools_onset_check.py <name>`（字幕预设库）；`python3 tools_hl_onset.py <name>`（高光测试）。在同一个页面里逐帧调用 `renderFrame` 和 `fxState()`。“可读”指字的不透明度 ≥0.5，或手绘线已画出 ≥25%。偏差要求 ≤2 帧；v2 实测最大 0.75 帧 | 改 file URI 后照用。「未验证」 |
 | 安全区、压脸、压 logo、层数 | 渲染时每帧调用 `checkSafe()`，结果写到 `out/<name>_safe_violations.json`（要求为 `[]`）。安全区 x 90–930、y 200–1540；人脸框来自 YuNet（`models/yunet.onnx`，`cv2.FaceDetectorYN`）；logo 避让带；同屏 >3 层算违规 | 同上。「未验证」 |
 | 接触表（每秒一张） | `ffmpeg -i out.mp4 -vf "fps=1,scale=216:384,drawtext=fontfile=/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc:text='%{pts\:gmtime\:0\:%M\\\:%S}':x=4:y=4:fontsize=20:fontcolor=red:box=1:boxcolor=white@0.7,tile=10xN:padding=4:color=gray" -frames:v 1 -q:v 3 qc.jpg`（`render.py`、`work/qc.py`；Python 里转义层数更多，以脚本原文为准） | fontfile 写成 `fontfile='C\:/Windows/Fonts/msyh.ttc'`：值用单引号，冒号转义，正斜杠。只写 `C\:/...` 不加引号会报 `No option name`。「已验证」接触表整条拼图命令这次没跑 |
-| 响度 | `ffmpeg -hide_banner -i out.mp4 -af ebur128=peak=true -f null -`，从 stderr 最后的 Summary 里读 `I:` 和 `Peak:` | 照用。「已验证」整片 −14.0 LUFS、真峰值 −3.4 dBTP。剪映导出的文件要再测，见 `jianying_route.md` |
+| 响度 | `ffmpeg -hide_banner -i out.mp4 -af ebur128=peak=true -f null -`，从 stderr 最后的 Summary 里读 `I:` 和 `Peak:` | 照用。「已验证」整片 −14.0 LUFS、真峰值 −3.4 dBTP。剪映导出和降过总音量之后的最终文件，都要重测 I 和真峰值，见 `jianying_route.md`。低清预览不能代替 |
 | 黑帧 | `ffmpeg -hide_banner -i out.mp4 -vf blackdetect=d=0.1:pix_th=0.08 -an -f null -`（`work/qc.py`，用正则抓 `black_start/black_end`） | 命令能跑。「已验证」`d=0.05:pix_th=0.05` 的那次是 0 条。上表这个阈值没单独跑 |
-| 定格检测 freezedetect | Linux 上已跑过：`ffmpeg -i out.mp4 -vf "freezedetect=n=0.003:d=0.2" -an -f null -`，两版测试片都只检出分镜里那一处定格。`d` 是能报出的最短冻帧，再用 `d=0.1` 扫一遍抓 2–3 帧的卡顿。freezedetect 不算入场动画，报出的时长比 spec 短（例：spec 0.43 s，只报 0.233 s）；核对定格时长用 PyAV 逐帧算帧差为 0 的区间 | 命令在 Windows 上能跑。「已验证」模糊或压暗的镜头上，每一条命中都要用相邻帧差再确认：帧差正好是 0 才是卡住，大于 0 只是运动很小。有一条成片在 19.5 秒报了 0.37 秒，帧差大于 0，是模糊后几乎不动的口播，误报。见 `qc_checklist.md` 第 5 项 |
+| 定格检测 freezedetect | Linux 上已跑过：`ffmpeg -i out.mp4 -vf "freezedetect=n=0.003:d=0.2" -an -f null -`，两版测试片都只检出分镜里那一处定格。`d` 是能报出的最短冻帧，再用 `d=0.1` 扫一遍抓 2–3 帧的卡顿。freezedetect 不算入场动画，报出的时长比 spec 短（例：spec 0.43 s，只报 0.233 s）；整帧帧差为 0 的区间只用来定位疑点，不能单独当成定格时长，也不能单独判故障。人物区域、包装层、源片、声音和设计意图一起看 | 命令在 Windows 上能跑。「已验证」的是命令能跑。模糊或压暗的镜头上，每一条命中都要复核：帧差大于 0 不能自动判通过，等于 0 不能自动判故障。有一条成片在 19.5 秒报了 0.37 秒，整帧帧差大于 0，画面是模糊后几乎不动的口播。这只说明要复核。见 `qc_checklist.md` 第 5、10 项 |
 | 定格只能落在静音里 | v2 用的是临时内联脚本：读 `work/<name>/voice.wav`，每 10ms/20ms 算 RMS dBFS，要求定格区间内 ≤ −45 dB（实测平均 −53.2，最大 −45）；冻结用的帧是按嘴部裁图人工挑的（`out/highlight_test_v2_freeze_mouth.jpg`） | 「平台无关」（wave + numpy） |
 | 换气空隙 | `tools_hl_onset.py` 的后半部分：切点两侧低于 −42 dBFS 的连续长度 ≤90ms | 「平台无关」 |
 | 抠像边缘 | 头发、手、椅子三处的局部放大（合成图和 alpha 并排），由 `highlight.py` 跑完后用内联 cv2 生成 | 「平台无关」 |
@@ -382,7 +382,7 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 | 7 | **HLG 发灰**：ffmpeg 不带 zscale，或者直接当 SDR 解码，画面就会发灰、偏淡 | 用 `ffmpeg -filters` 确认有 zscale；ffprobe 看 `color_transfer`，是 `arib-std-b67` 就必须走 HDR 链；拿一帧和素材接触表对比 |
 | 8 | **Whisper 同音字和幻觉**：实测「岗」被听成「赶」，还冒出一段没说过的「试骑第一天」 | 对照音频人工校对全文，校对后再送 whisperX 对齐；屏幕上的字必须能在校对稿里找到原话 |
 | 9 | **卡点从“第一个看得清的帧”算**，不是从元素出现的那一帧算；入场动画提前 1 帧开始 | `tools_hl_onset.py` / `tools_onset_check.py`，偏差 ≤2 帧 |
-| 10 | **定格只能放在 < −45 dB 的静音里**，否则嘴型和声音对不上（v1 就是这个问题：定格盖在说话上） | 测定格区间内人声 RMS（≤ −45 dBFS）；挑一帧闭嘴或接近闭嘴的画面来定格；音频照常走，不做时间拉伸 |
+| 10 | **定格只能放在 < −45 dB 的静音里**，否则嘴型和声音对不上（v1 就是这个问题：定格盖在说话上） | 测定格区间内人声 RMS（≤ −45 dBFS）；挑一帧接近闭嘴的画面来定格，这一帧只用于画面，不用来判断是不是换了说话人；音频照常走，不做时间拉伸。整帧帧差不自动判决，见 `qc_checklist.md` 第 5、10 项 |
 | 11 | **Windows 的 multiprocessing（spawn）**：脚本顶层没有 `if __name__=='__main__':` 会出错 | 改脚本，先用 `--workers 1` 跑通 |
 | 12 | **字的结束时间不可靠**（whisperX） | 出点按能量裁，然后检查换气空隙 ≤90ms |
 | 13 | **抠像和读帧的 vf 不一致**会导致描边错位 | 抠像和合成用同一个 vf 字符串，对比两次 matte 的差值（实测为 0） |
@@ -400,4 +400,4 @@ fc+';[mix]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json[o]'  → '-f','null','
 - **编码**：Linux 默认 UTF-8；Windows 默认可能是 GBK，所有文件读写都要写 `encoding='utf-8'`。
 - **GPU**：我们全程在 CPU 上跑（int8 whisper、CPU 对齐、CPU 抠像）；Windows 有 N 卡可以开 CUDA，但需要匹配的 torch 和 cuDNN，没有验证过。
 - **路径**：Linux 路径和 `D:\...`；脚本里写死的 `/tmp`、`/usr/share/fonts`、`...` 都要改成可配置的。
-- **剪映**：哪些已经在 11.7 里打开确认、哪些还没测，见 `jianying_route.md`。质检打在剪辑师导出的 mp4 上，不必读草稿。导出本身待验证。`caption_presets.json` 里的 `jianying` 字段仍是未实测。
+- **剪映**：哪些已经在 11.7 里打开确认、哪些还没测，见 `jianying_route.md`。质检打在剪辑师导出的 mp4 上，不必读草稿。导出本身待核验。`caption_presets.json` 里的 `jianying` 字段仍是未实测。

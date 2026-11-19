@@ -1,6 +1,6 @@
 # Windows 环境（Codex + 剪映）
 
-> 已核实的条目附来源方向；标「待验证」的要在目标机器上实测一次再去掉标记。完整命令对照见 `windows_commands.md`。
+> 已核实的条目附来源方向；标「待核验」的要在目标机器上实测一次再去掉标记。文中的「未验证」也是待核验，不是已通过，也不是待实现。完整命令对照见 `windows_commands.md`。冻帧判据以 `qc_checklist.md` 为准，不用帧差等于 0 自动判故障或通过。
 
 ## 安装这个 skill
 - 个人级：`%USERPROFILE%\.agents\skills\vertical-talking-head-edit\SKILL.md`（Codex 官方当前位置）；仓库级：`<项目>\.agents\skills\`。
@@ -21,8 +21,8 @@
   writable_roots = ["C:/你的/剪映草稿目录"]
   ```
   项目级 `.codex/config.toml` 只在项目被信任时加载。
-- 沙箱写文件（已验证失败的那一半）：桌面版这次是 `[windows] sandbox = "elevated"`，配置里没有 `writable_roots`。写工作区以外直接 `Access is denied`，不弹批准。工作区本身在只读沙箱里也不能写；调用时带 `require_escalated` 之后，工作区可以写。配上 `writable_roots` 并重启之后，草稿目录能不能写成，这次没复测，待验证。
-- 沙箱里能否跑 CUDA 版 torch：这次没装 torch，待验证。若 CUDA 在沙箱里不可用，GPU 步骤在沙箱外跑或回退 CPU。模型缓存（`%USERPROFILE%\.cache`）要么在 `writable_roots` 里，要么在沙箱外先下好。沙箱里跑 `ffmpeg -version` 和解码到 `-f null -` 是可以的。
+- 沙箱写文件（已验证失败的那一半）：桌面版这次是 `[windows] sandbox = "elevated"`，配置里没有 `writable_roots`。写工作区以外直接 `Access is denied`，不弹批准。工作区本身在只读沙箱里也不能写；调用时带 `require_escalated` 之后，工作区可以写。配上 `writable_roots` 并重启之后，草稿目录能不能写成，这次没复测，待核验。
+- 沙箱里能否跑 CUDA 版 torch：这次没装 torch，待核验。若 CUDA 在沙箱里不可用，GPU 步骤在沙箱外跑或回退 CPU。模型缓存（`%USERPROFILE%\.cache`）要么在 `writable_roots` 里，要么在沙箱外先下好。沙箱里跑 `ffmpeg -version` 和解码到 `-f null -` 是可以的。
 
 ## 自检清单（不过不开工）
 | 项 | 检查 | 通过标准 |
@@ -48,17 +48,17 @@
 - whisperX 首次会下载 nltk 分句模型，网络关着会失败：每段本来就是一句时，可换成“整段当一句”的分句器。
 - RVM 走 torch.hub 要从 GitHub 拉模型，拉不下来就用 onnx 版或剪映「智能抠像」。
 
-## Windows 首次实测清单（跑一条完整测试片时逐项确认，通过后去掉对应「待验证」）
+## Windows 首次实测清单（跑一条完整测试片时逐项确认，通过后去掉对应「待核验」）
 | 项 | 测法 | 通过标准 |
 |---|---|---|
-| 命令移植 | 同一份 spec 在 Windows 与已跑通的环境各出一版 | 帧数一致，响度相差 ≤0.2 LU，帧差与冻帧检查结果一致。整份对照还没做，待验证。单段重编码（`-ss` 在 `-i` 前、`-frames:v`、libx264）在 Windows 上出过 1.000 秒、30 帧 |
+| 命令移植 | 同一份 spec 在 Windows 与已跑通的环境各出一版 | 帧数一致，响度相差 ≤0.2 LU，冻帧检查结论一致。冻帧是否算故障以 `qc_checklist.md` 第 5 项为准，不用帧差等于 0 自动判故障或通过。整份对照还没做，待核验。单段重编码（`-ss` 在 `-i` 前、`-frames:v`、libx264）在 Windows 上出过 1.000 秒、30 帧 |
 | ffmpeg 滤镜 | 对完整版跑 `ffmpeg -hide_banner -filters`，确认 zscale、afftdn、sidechaincompress、loudnorm；`-encoders` 确认 prores_ks、libx264 | 已验证：完整版有这些项。剪映自带的 ffmpeg 缺 zscale 和 libx264，不能算通过 |
 | 路径与编码 | concat 列表用正斜杠跑一次；`drawtext` 的 fontfile；`.bat` 里的序列号；`as_uri()` | 已验证：正斜杠 concat 能接上；`fontfile='C\:/Windows/Fonts/msyh.ttc'` 能写出中文；`.bat` 里要 `%%05d`；`Path.resolve().as_uri()` 得到 `file:///C:/...`；中文 JSON 用 utf-8 能往返 |
-| 特效层 | 渲染一帧高光段，与参考 QC 帧对比 | 已验证：Playwright Chromium 能截透明 PNG，再编成 ProRes 4444（`yuva444p12le`）。和参考 QC 帧对过没有，待验证 |
-| 可写目录 | 草稿目录加进 `writable_roots` 后重启，在沙箱里往该目录写一个文件 | 没配 `writable_roots` 时直接 Access denied、不弹批准（已验证）。配上并重启后的成功写入没复测，待验证。工作区在 `require_escalated` 之后可以写（已验证） |
-| 沙箱内 GPU | 沙箱里跑 `ffmpeg -version`、`python -c "import torch; print(torch.cuda.is_available())"`，再转一段 5 秒片子 | `ffmpeg -version` 已通过。torch 没装，待验证。沙箱里写 5 秒片子的输出文件会被拒绝，除非提权或目录在可写范围内 |
-| 安装 | 两个听写环境各自 import；CUDA 版跑完 10 秒素材 | 待验证。这次只装了便携 Python、pyJianYingDraft、Playwright，没装 whisper / whisperX / demucs / torch |
-| 剪映草稿 | 见 `jianying_route.md` | 主文件、绝对路径、ProRes/PNG 透明、剪映文本和分色、口播变速、音效分轨、明文草稿能打开：已验证。分屏位置、空镜拖换、音乐闪避关键帧、剪映点导出：待验证 |
+| 特效层 | 渲染一帧高光段，与参考 QC 帧对比 | 已验证：Playwright Chromium 能截透明 PNG，再编成 ProRes 4444（`yuva444p12le`）。和参考 QC 帧对过没有，待核验 |
+| 可写目录 | 草稿目录加进 `writable_roots` 后重启，在沙箱里往该目录写一个文件 | 没配 `writable_roots` 时直接 Access denied、不弹批准（已验证）。配上并重启后的成功写入没复测，待核验。工作区在 `require_escalated` 之后可以写（已验证） |
+| 沙箱内 GPU | 沙箱里跑 `ffmpeg -version`、`python -c "import torch; print(torch.cuda.is_available())"`，再转一段 5 秒片子 | `ffmpeg -version` 已通过。torch 没装，待核验。沙箱里写 5 秒片子的输出文件会被拒绝，除非提权或目录在可写范围内 |
+| 安装 | 两个听写环境各自 import；CUDA 版跑完 10 秒素材 | 待核验。这次只装了便携 Python、pyJianYingDraft、Playwright，没装 whisper / whisperX / demucs / torch |
+| 剪映草稿 | 见 `jianying_route.md` | 主文件、绝对路径、ProRes/PNG 透明、剪映文本和分色、口播变速、音效分轨、明文草稿能打开：已验证。分屏和画中画位置、空镜拖动替换、音乐闪避关键帧、剪映点导出及导出 QC、手绘对齐：待核验 |
 | 起音前 ≤67 ms | 剪点的源时间用 `source_timerange.start`，不要用 `target_timerange.start`。能量阈值 max(p10+14 dB, −48 dBFS)，连续 3 个 10 ms 窗口 | 能量口径已通过：29/29 ≤67 ms，最大 40 ms。量的是已经降噪压缩的人声，没有 demucs，也没有试听。听感确认字头没被切掉之前，不把 ≤67 ms 改成默认，仍用两侧静音合计 ≤90 ms |
 
-固定语法，直接当规则用：cmd 的 `.bat` 里 `%05d` 写成 `%%05d`（已验证）；`fontfile='C\:/Windows/Fonts/msyh.ttc'`（已验证）；多进程脚本入口加 `if __name__ == "__main__":`（这条还没在 Windows 上跑多进程，待验证）。
+固定语法，直接当规则用：cmd 的 `.bat` 里 `%05d` 写成 `%%05d`（已验证）；`fontfile='C\:/Windows/Fonts/msyh.ttc'`（已验证）；多进程脚本入口加 `if __name__ == "__main__":`（这条还没在 Windows 上跑多进程，待核验）。
